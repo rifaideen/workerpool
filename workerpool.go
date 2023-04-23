@@ -1,3 +1,19 @@
+// Copyright (c) 2023 Rifaudeen. All rights reserved.
+//
+// This file is part of github.com/rifaideen/workerpool.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Package workerpool provides a simple way to execute tasks concurrently.
 //
 // A worker pool is a pool of goroutines that can be used to execute tasks concurrently. When a task is added to the worker pool, it is executed by one of the worker goroutines.
@@ -24,24 +40,62 @@
 //
 //	package main
 //
+//	import "fmt"
 //	import "github.com/rifaideen/workerpool"
 //
+//	type MyTask struct {
+//		config *TaskConfig
+//	}
+//
+//	func (t *MyTask) Execute(ctx context.Context) error {
+//		// Do something.
+//		return nil
+//	}
+//
+//	func (t *MyTask) OnSuccess() {
+//		fmt.Println("Success!")
+//	}
+//
+//	func (t *MyTask) OnError(err error) {
+//		fmt.Println("Error:", err)
+//	}
+//
+//	func (t *MyTask) Init() *TaskConfig {
+//		return t.config
+//	}
+//
 //	func main()  {
-//		config := WorkerPoolConfig{
+//		config := workerpool.WorkerPoolConfig{
 //			WorkersCount: 3,
 //			Verbose:      false,
 //		}
 //
-//		pool, err := NewWorkerPool(&config)
+//		pool, err := workerpool.NewWorkerPool(&config)
 //
 //		if err != nil {
-//		    log.Fatal(err)
+//			log.Fatal(err)
 //		}
 //
 //		pool.Start()
 //		defer pool.Stop()
 //
-//		// Add your task here.
+//		// Create a task config.
+//		config := &workerpool.TaskConfig{
+//			RetryLimit: 3,
+//			RetryThreshold: 1000, // in ms
+//			Verbose: true, // display verbose output
+//		}
+//
+//		// Create a task.
+//		task := &MyTask{
+//			config: config,
+//		}
+//
+//		// call to Add() may block, if the tasks are full.
+//		// The task size can be configured using WorkerPoolConfig.TaskSize during the initialization
+//		if added := pool.Add(task); !added {
+//			fmt.Println("Cannot add task.")
+//		}
 //	}
 package workerpool
 
