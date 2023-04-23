@@ -26,7 +26,7 @@ go get github.com/rifaideen/workerpool
     import "github.com/rifaideen/workerpool"
 
     type MyTask struct {
-        config *TaskConfig
+        config *workerpool.TaskConfig
     }
 
     func (t *MyTask) Execute(ctx context.Context) error {
@@ -42,7 +42,7 @@ go get github.com/rifaideen/workerpool
         fmt.Println("Error:", err)
     }
 
-    func (t *MyTask) Init() *TaskConfig {
+    func (t *MyTask) Init() *workerpool.TaskConfig {
         return t.config
     }
 
@@ -62,15 +62,14 @@ go get github.com/rifaideen/workerpool
     	defer pool.Stop()
 
         // Create a task config.
-        config := &workerpool.TaskConfig{
+        taskConfig := &workerpool.TaskConfig{
             RetryLimit: 3,
             RetryThreshold: 1000, // in ms
-            Verbose: true, // display verbose output
         }
 
         // Create a task.
         task := &MyTask{
-            config: config,
+            config: taskConfig,
         }
 
         // call to Add() may block, if the tasks are full.
@@ -78,6 +77,8 @@ go get github.com/rifaideen/workerpool
         if added := pool.Add(task); !added {
             fmt.Println("Cannot add task.")
         }
+
+        time.Sleep(time.Second * 1)
     }
 ```
 
