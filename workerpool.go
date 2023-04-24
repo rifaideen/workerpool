@@ -130,7 +130,7 @@ type WorkerPool struct {
 	// Worker pool stop status to identify whether the pool is stopped or not.
 	stopped bool
 
-	// Display verbose information on various occassions.
+	// Display verbose information on various occasions.
 	verbose bool
 }
 
