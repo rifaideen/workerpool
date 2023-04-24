@@ -1,3 +1,6 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/rifaideen/workerpool.svg)](https://pkg.go.dev/github.com/rifaideen/workerpool)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rifaideen/workerpool)](https://goreportcard.com/report/github.com/rifaideen/workerpool)
+
 # Workerpool
 
 A simple way to execute tasks concurrently.
