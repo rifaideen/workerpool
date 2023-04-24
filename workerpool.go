@@ -192,25 +192,19 @@ func (pool *WorkerPool) Start() {
 
 // start the workers internally and listen for task and quit signals
 func (pool *WorkerPool) startListening(id int) {
-	if pool.verbose {
-		fmt.Printf("Started Worker Id: #%d\n", id)
-	}
+	pool.log(fmt.Sprintf("Started Worker Id: #%d\n", id))
 
 	for {
 		select {
 		// wait for quit signal and quit worker
 		case <-pool.quit:
-			if pool.verbose {
-				fmt.Printf("Quit signal received. Quitting worker. Worker Id: #%d\n", id)
-			}
+			pool.log(fmt.Sprintf("Quit signal received. Quitting worker. Worker Id: #%d\n", id))
 
 			return
 		// wait for task and execute it
 		case task, ok := <-pool.tasks:
 			if !ok {
-				if pool.verbose {
-					fmt.Printf("Channel closed. Quitting worker. Worker Id: #%d\n", id)
-				}
+				pool.log(fmt.Sprintf("Channel closed. Quitting worker. Worker Id: #%d\n", id))
 
 				return
 			}
@@ -227,10 +221,8 @@ func (pool *WorkerPool) startListening(id int) {
 
 			// Execute the task till the tass is either successful or retry till it reaches the retry limit
 			for i := 0; i < int(config.RetryLimit); i++ {
-				if pool.verbose {
-					fmt.Printf("Executing Task on Worker Id: #%d\n", id)
-					fmt.Printf("Task: %+v\n", task)
-				}
+				pool.log(fmt.Sprintf("Executing Task on Worker Id: #%d\n", id))
+				pool.log(fmt.Sprintf("Task: %+v\n", task))
 
 				// TODO: make use of context with timeout
 				err = task.Execute(context.TODO())
@@ -239,18 +231,13 @@ func (pool *WorkerPool) startListening(id int) {
 				if err == nil {
 					// call the success callback
 					task.OnSuccess()
-
-					if pool.verbose {
-						fmt.Println("Done")
-					}
+					pool.log("Done")
 
 					break
 				}
 
 				// Task execution failed, retry the task
-				if pool.verbose {
-					fmt.Printf("Task Execution Failed: %s\nRetrying task.\n", err)
-				}
+				pool.log(fmt.Sprintf("Task Execution Failed: %s\nRetrying task.\n", err))
 
 				// sleep a little bit before retrying the task, if the threshold is set.
 				if config.RetryThreshold > 0 {
@@ -260,9 +247,7 @@ func (pool *WorkerPool) startListening(id int) {
 
 			// Task execution failed permanently
 			if err != nil {
-				if pool.verbose {
-					fmt.Printf("Task Execution Failed Permanently: %s\n", err)
-				}
+				pool.log(fmt.Sprintf("Task Execution Failed Permanently: %s\n", err))
 
 				// call the error callback
 				task.OnError(err)
@@ -278,17 +263,12 @@ func (pool *WorkerPool) startListening(id int) {
 // The Stop() method is typically called in the `main()` function.
 func (pool *WorkerPool) Stop() {
 	pool.stopper.Do(func() {
-		if pool.verbose {
-			fmt.Println("Stopping worker pools.")
-		}
+		pool.log("Stopping worker pools.")
 
 		// close the worker pool's quit channel
 		close(pool.quit)
 		pool.stopped = true
-
-		if pool.verbose {
-			fmt.Println("Done")
-		}
+		pool.log("Done")
 	})
 }
 
@@ -303,4 +283,11 @@ func (pool *WorkerPool) Add(task Task) bool {
 	pool.tasks <- task
 
 	return true
+}
+
+// log logs the message if verbose flag is set to true.
+func (pool *WorkerPool) log(message string) {
+	if pool.verbose {
+		fmt.Println(message)
+	}
 }
