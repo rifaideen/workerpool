@@ -24,6 +24,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/rifaideen/workerpool/task"
 )
 
 // Simple multiply operation performed on the even numbers
@@ -50,8 +52,8 @@ func (m *MultiplyTask) Execute(ctx context.Context) error {
 }
 
 // init the task
-func (m *MultiplyTask) Init() *TaskConfig {
-	return &TaskConfig{
+func (m *MultiplyTask) Init() *task.Config {
+	return &task.Config{
 		RetryLimit:     1,
 		RetryThreshold: 100,
 	}
@@ -69,23 +71,23 @@ func (m *MultiplyTask) OnError(err error) {
 }
 
 func TestWorkerPoolInstance(t *testing.T) {
-	_, err := NewWorkerPool(nil)
+	_, err := New(nil)
 
 	if err == nil {
 		t.Error("Expected error, got nil")
 	}
 
-	config := WorkerPoolConfig{
+	config := Config{
 		WorkersCount: 0,
 	}
-	_, err = NewWorkerPool(&config)
+	_, err = New(&config)
 
 	if err == nil {
 		t.Errorf("Expected worker pool configuration error, got %s", err)
 	}
 
 	config.WorkersCount = 3
-	pool, _ := NewWorkerPool(&config)
+	pool, _ := New(&config)
 
 	if pool == nil {
 		t.Error("Expected worker pool instance, got nil")
@@ -97,11 +99,11 @@ func TestWorkerPoolInstance(t *testing.T) {
 }
 
 func TestWorkerPoolWork(t *testing.T) {
-	config := WorkerPoolConfig{
+	config := Config{
 		WorkersCount: 0,
 		Verbose:      false,
 	}
-	_, err := NewWorkerPool(&config)
+	_, err := New(&config)
 
 	if err == nil {
 		t.Errorf("Expected worker pool configuration error, got %s", err)
@@ -110,7 +112,7 @@ func TestWorkerPoolWork(t *testing.T) {
 	config.Verbose = true
 	config.WorkersCount = 10
 
-	pool, err := NewWorkerPool(&config)
+	pool, err := New(&config)
 
 	if err != nil {
 		t.Errorf("Expected nil, got %v", err)
@@ -148,12 +150,12 @@ func TestWorkerPoolWork(t *testing.T) {
 }
 
 func TestWorkerPoolWorkAddSuccess(t *testing.T) {
-	config := WorkerPoolConfig{
+	config := Config{
 		WorkersCount: 10,
 		Verbose:      true,
 	}
 
-	pool, err := NewWorkerPool(&config)
+	pool, err := New(&config)
 
 	if err != nil {
 		t.Errorf("Expected nil, got %v", err)
@@ -198,12 +200,12 @@ func TestWorkerPoolWorkAddSuccess(t *testing.T) {
 }
 
 func TestWorkerPoolWorkSkipAdd(t *testing.T) {
-	config := WorkerPoolConfig{
+	config := Config{
 		WorkersCount: 10,
 		Verbose:      true,
 	}
 
-	pool, err := NewWorkerPool(&config)
+	pool, err := New(&config)
 
 	if err != nil {
 		t.Errorf("Expected nil, got %v", err)
@@ -236,10 +238,10 @@ func TestWorkerPoolWorkSkipAdd(t *testing.T) {
 }
 
 func BenchmarkWorkerPool(b *testing.B) {
-	config := WorkerPoolConfig{
+	config := Config{
 		WorkersCount: 3,
 	}
-	pool, _ := NewWorkerPool(&config)
+	pool, _ := New(&config)
 
 	if pool == nil {
 		b.Error("Expected worker pool instance, got nil")
