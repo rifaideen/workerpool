@@ -8,8 +8,8 @@ A simple way to execute tasks concurrently.
 ## Features
 
 - Execute tasks concurrently
-- Configurable workerpool instance (See `WorkerPoolConfig`)
-- Configurable retry limits and threshold per task (See `TaskConfig`)
+- Configurable workerpool instance (See `workerpool.Config`)
+- Configurable retry limits and threshold per task (See `task.Config`)
 - Easy to use
 - Callbacks on success and failure
 - Create new tasks easily by implementing the **Task** interface
@@ -27,9 +27,10 @@ go get github.com/rifaideen/workerpool
 
     import "fmt"
     import "github.com/rifaideen/workerpool"
+    import "github.com/rifaideen/workerpool/task"
 
     type MyTask struct {
-        config *workerpool.TaskConfig
+        config *task.Config
     }
 
     func (t *MyTask) Execute(ctx context.Context) error {
@@ -45,17 +46,17 @@ go get github.com/rifaideen/workerpool
         fmt.Println("Error:", err)
     }
 
-    func (t *MyTask) Init() *workerpool.TaskConfig {
+    func (t *MyTask) Init() *task.Config {
         return t.config
     }
 
     func main()  {
-    	config := workerpool.WorkerPoolConfig{
+    	config := workerpool.Config{
     		WorkersCount: 3,
     		Verbose:      false,
     	}
 
-    	pool, err := workerpool.NewWorkerPool(&config)
+    	pool, err := workerpool.New(&config)
 
     	if err != nil {
     	    log.Fatal(err)
@@ -65,7 +66,7 @@ go get github.com/rifaideen/workerpool
     	defer pool.Stop()
 
         // Create a task config.
-        taskConfig := &workerpool.TaskConfig{
+        taskConfig := &task.Config{
             RetryLimit: 3,
             RetryThreshold: 1000, // in ms
         }
