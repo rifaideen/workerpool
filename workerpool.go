@@ -42,9 +42,10 @@
 //
 //	import "fmt"
 //	import "github.com/rifaideen/workerpool"
+//	import "github.com/rifaideen/workerpool/task"
 //
 //	type MyTask struct {
-//		config *workerpool.TaskConfig
+//		config *task.Config
 //	}
 //
 //	func (t *MyTask) Execute(ctx context.Context) error {
@@ -60,17 +61,17 @@
 //		fmt.Println("Error:", err)
 //	}
 //
-//	func (t *MyTask) Init() *workerpool.TaskConfig {
+//	func (t *MyTask) Init() *task.Config {
 //		return t.config
 //	}
 //
 //	func main()  {
-//		config := workerpool.WorkerPoolConfig{
+//		config := workerpool.Config{
 //			WorkersCount: 3,
 //			Verbose:      false,
 //		}
 //
-//		pool, err := workerpool.NewWorkerPool(&config)
+//		pool, err := workerpool.New(&config)
 //
 //		if err != nil {
 //			log.Fatal(err)
@@ -80,7 +81,7 @@
 //		defer pool.Stop()
 //
 //		// Create a task config.
-//		taskConfig := &workerpool.TaskConfig{
+//		taskConfig := &task.Config{
 //			RetryLimit: 3,
 //			RetryThreshold: 1000, // in ms
 //			Verbose: true, // display verbose output
@@ -92,7 +93,7 @@
 //		}
 //
 //		// call to Add() may block, if the tasks are full.
-//		// The task size can be configured using WorkerPoolConfig.TaskSize during the initialization
+//		// The task size can be configured using Config.TaskSize during the initialization
 //		if added := pool.Add(task); !added {
 //			fmt.Println("Cannot add task.")
 //		}
@@ -108,6 +109,8 @@ import (
 	"log"
 	"sync"
 	"time"
+
+	"github.com/rifaideen/workerpool/task"
 )
 
 // WorkerPool is a pool of workers that can be used to execute tasks concurrently.
@@ -116,7 +119,7 @@ type WorkerPool struct {
 	numWorkers uint8
 
 	// Tasks to be executed in the pool.
-	tasks chan Task
+	tasks chan task.Task
 
 	// Quit channel to be closed when we want to terminate the pool.
 	quit chan struct{}
@@ -134,8 +137,8 @@ type WorkerPool struct {
 	verbose bool
 }
 
-// WorkerPoolConfig is used to configure a WorkerPool.
-type WorkerPoolConfig struct {
+// Config is used to configure a WorkerPool.
+type Config struct {
 	// Number of workers in the pool.
 	WorkersCount uint8
 	// Size of tasks the pool can hold, before it's blocking the queue. Defaults to 10.
@@ -144,19 +147,19 @@ type WorkerPoolConfig struct {
 	Verbose bool
 }
 
-// ErrWorkerPoolConfig is the error returned when the worker pool configuration is invalid.
-var ErrWorkerPoolConfig = errors.New("invalid worker pool configuration")
+// ErrConfig is the error returned when the worker pool configuration is invalid.
+var ErrConfig = errors.New("invalid worker pool configuration")
 
 // NewWorkerPool creates a new WorkerPool with the specified configuration.
 //
 // It returns a new WorkerPool instance with the specified configuration and error if any configuration error.
-func NewWorkerPool(config *WorkerPoolConfig) (*WorkerPool, error) {
+func New(config *Config) (*WorkerPool, error) {
 	if config == nil {
-		return nil, fmt.Errorf("%w: configuration cannot be nil", ErrWorkerPoolConfig)
+		return nil, fmt.Errorf("%w: configuration cannot be nil", ErrConfig)
 	}
 
 	if config.WorkersCount <= 0 {
-		return nil, fmt.Errorf("%w: workers count must be greater than 0", ErrWorkerPoolConfig)
+		return nil, fmt.Errorf("%w: workers count must be greater than 0", ErrConfig)
 	}
 
 	taskSize := config.TaskSize
@@ -167,7 +170,7 @@ func NewWorkerPool(config *WorkerPoolConfig) (*WorkerPool, error) {
 
 	pool := &WorkerPool{
 		numWorkers: config.WorkersCount,
-		tasks:      make(chan Task, taskSize),
+		tasks:      make(chan task.Task, taskSize),
 		quit:       make(chan struct{}),
 		starter:    sync.Once{},
 		stopper:    sync.Once{},
@@ -202,7 +205,7 @@ func (pool *WorkerPool) startListening(id int) {
 
 			return
 		// wait for task and execute it
-		case task, ok := <-pool.tasks:
+		case currentTask, ok := <-pool.tasks:
 			if !ok {
 				pool.log(fmt.Sprintf("Channel closed. Quitting worker. Worker Id: #%d\n", id))
 
@@ -212,25 +215,25 @@ func (pool *WorkerPool) startListening(id int) {
 			var err error
 
 			// Init the task and get the task level configurations.
-			config := task.Init()
+			config := currentTask.Init()
 
 			// Validate the task configurations
 			if config.RetryLimit == 0 {
-				log.Fatalf("%s: retry limit must be greater than 0", ErrTaskConfig)
+				log.Fatalf("%s: retry limit must be greater than 0", task.ErrConfig)
 			}
 
 			// Execute the task till the tass is either successful or retry till it reaches the retry limit
 			for i := 0; i < int(config.RetryLimit); i++ {
 				pool.log(fmt.Sprintf("Executing Task on Worker Id: #%d\n", id))
-				pool.log(fmt.Sprintf("Task: %+v\n", task))
+				pool.log(fmt.Sprintf("Task: %+v\n", currentTask))
 
 				// TODO: make use of context with timeout
-				err = task.Execute(context.TODO())
+				err = currentTask.Execute(context.TODO())
 
 				// Task execution success
 				if err == nil {
 					// call the success callback
-					task.OnSuccess()
+					currentTask.OnSuccess()
 					pool.log("Done")
 
 					break
@@ -250,7 +253,7 @@ func (pool *WorkerPool) startListening(id int) {
 				pool.log(fmt.Sprintf("Task Execution Failed Permanently: %s\n", err))
 
 				// call the error callback
-				task.OnError(err)
+				currentTask.OnError(err)
 			}
 		}
 	}
@@ -275,7 +278,7 @@ func (pool *WorkerPool) Stop() {
 // Add adds a task to the worker pool.
 //
 // The task will be executed by one of the worker goroutines in the pool.
-func (pool *WorkerPool) Add(task Task) bool {
+func (pool *WorkerPool) Add(task task.Task) bool {
 	if pool.stopped {
 		return false
 	}

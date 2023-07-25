@@ -14,7 +14,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package workerpool
+package task
 
 import (
 	"context"
@@ -35,11 +35,11 @@ type Task interface {
 	OnError(error)
 
 	// Init is called to initialize the task.
-	Init() *TaskConfig
+	Init() *Config
 }
 
-// TaskConfig is used to configure the behavior of a task.
-type TaskConfig struct {
+// Config is used to configure the behavior of a task.
+type Config struct {
 	// RetryLimit is the maximum number of times that a task will be retried if it fails.
 	RetryLimit uint8
 	// RetryThreshold is the number of milliseconds to hold before a task will be retried.
@@ -47,4 +47,4 @@ type TaskConfig struct {
 }
 
 // ErrTaskConfig is the error returned when the task configuration is invalid.
-var ErrTaskConfig = errors.New("invalid task configuration")
+var ErrConfig = errors.New("invalid task configuration")
